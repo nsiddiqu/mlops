@@ -1,0 +1,10 @@
+Registered Model Metrics:
+   mae       : 3165.37
+   mape      : 54.47
+   r2        : 0.8537
+   rmse      : 5625.4
+
+🔍 Quality Gates:
+   R² ≥ 0.75  → 0.8537  ✅ PASS
+   MAPE ≤ 30.0% → 54.47%  ❌ FAIL
+ValueError: ❌ Model failed quality gate. R²=0.8537, MAPE=54.47%. Required: R²≥0.75, MAPE≤30.0%
