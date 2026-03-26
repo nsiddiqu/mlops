@@ -1,3 +1,11 @@
 predictions = loaded_model.predict(test_rows)
 
 TypeError: ('Expecting data to be a DMatrix object, got: ', <class 'pandas.core.frame.DataFrame'>)
+
+# Replace this:
+predictions = loaded_model.predict(test_rows)
+
+# With this:
+dsmoke      = xgb.DMatrix(X_smoke, feature_names=FEAT_NAMES,
+                           feature_types=["float"] * len(FEAT_NAMES))
+predictions = loaded_model.predict(dsmoke)
