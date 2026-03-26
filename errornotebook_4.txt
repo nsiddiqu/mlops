@@ -1,0 +1,59 @@
+Run ID: 860812a672be4eef911e2ecd301f4f78
+[0]	validation-rmse:14238.88395
+[50]	validation-rmse:7727.19007
+[100]	validation-rmse:6900.36891
+[150]	validation-rmse:6501.31065
+[200]	validation-rmse:6277.55823
+[250]	validation-rmse:6104.28621
+[300]	validation-rmse:5989.57468
+[350]	validation-rmse:5866.06517
+[400]	validation-rmse:5771.01405
+[450]	validation-rmse:5702.12736
+[499]	validation-rmse:5625.39532
+
+MAE=$3,165  RMSE=$5,625  R²=0.8537  MAPE=54.5%
+
+SHAP DMatrix: num_row=2000  num_col=12
+SHAP values: shape=(2000, 12)  dtype=float32
+2026/03/26 05:01:26 WARNING mlflow.models.model: `artifact_path` is deprecated. Please use `name` instead.
+🔗 View Logged Model at: https://adb-7405618848852627.7.azuredatabricks.net/ml/experiments/1073856514444963/models/m-1d0f3824eb1f4e11b74bd5947a3196b3?o=7405618848852627
+/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/mlflow/types/utils.py:452: UserWarning: Hint: Inferred schema contains integer column(s). Integer columns in Python cannot represent missing values. If your input data contains missing values at inference time, it will be encoded as floats and will cause a schema enforcement error. The best way to avoid this problem is to infer the model schema based on a realistic data sample (training dataset) that includes missing values. Alternatively, you can declare integer columns as doubles (float64) whenever these columns may have missing values. See `Handling Integers With Missing Values <https://www.mlflow.org/docs/latest/models.html#handling-integers-with-missing-values>`_ for more details.
+  warnings.warn(
+2026/03/26 05:01:27 WARNING mlflow.models.signature: Failed to infer the model signature from the input example. Reason: ValueError('DataFrame.dtypes for data must be int, float, bool or category. When categorical type is supplied, the experimental DMatrix parameter`enable_categorical` must be set to `True`.  Invalid columns:manufacturer: object, model: object, condition: object, fuel: object, transmission: object, drive: object, type: object, paint_color: object, state: object'). To see the full traceback, set the logging level to DEBUG via `logging.getLogger("mlflow").setLevel(logging.DEBUG)`.
+2026/03/26 05:01:30 WARNING mlflow.utils.requirements_utils: Failed to run predict on input_example, dependencies introduced in predict are not captured.
+ValueError('DataFrame.dtypes for data must be int, float, bool or category. When categorical type is supplied, the experimental DMatrix parameter`enable_categorical` must be set to `True`.  Invalid columns:manufacturer: object, model: object, condition: object, fuel: object, transmission: object, drive: object, type: object, paint_color: object, state: object')Traceback (most recent call last):
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 408, in pandas_feature_info
+    new_feature_types.append(_pandas_dtype_mapper[dtype.name])
+KeyError: 'object'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/mlflow/utils/_capture_modules.py", line 170, in load_model_and_predict
+    model.predict(input_example, params=params)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/mlflow/xgboost/__init__.py", line 411, in predict
+    return predict_fn(dataframe, **params)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/mlflow/xgboost/__init__.py", line 445, in wrapped_predict_fn
+    xgb.DMatrix(data), *args, validate_features=validate_features, **filtered_kwargs
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/core.py", line 751, in inner_f
+    return func(**kwargs)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/core.py", line 976, in __init__
+    handle, feature_names, feature_types = dispatch_data_backend(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 1429, in dispatch_data_backend
+    return _from_pandas_df(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 706, in _from_pandas_df
+    df, feature_names, feature_types = _transform_pandas_df(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 668, in _transform_pandas_df
+    feature_names, feature_types = pandas_feature_info(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 410, in pandas_feature_info
+    _invalid_dataframe_dtype(data)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f05954c8-839a-4fe3-b15b-2cb63e3b3b10/lib/python3.10/site-packages/xgboost/data.py", line 373, in _invalid_dataframe_dtype
+    raise ValueError(msg)
+ValueError: DataFrame.dtypes for data must be int, float, bool or category. When categorical type is supplied, the experimental DMatrix parameter`enable_categorical` must be set to `True`.  Invalid columns:manufacturer: object, model: object, condition: object, fuel: object, transmission: object, drive: object, type: object, paint_color: object, state: object
+2026/03/26 05:01:31 WARNING mlflow.models.model: Failed to validate serving input example {
+  "dataframe_split": {
+    "columns": [
+      "m.... Alternatively, you can avoid passing input example and pass model signature instead when logging the model. To ensure the input example is valid prior to serving, please try calling `mlflow.models.validate_serving_input` on the model uri and serving input example. A serving input example can be generated from model input example using `mlflow.models.convert_input_example_to_serving_input` function.
+Got error: DataFrame.dtypes for data must be int, float, bool or category. When categorical type is supplied, the experimental DMatrix parameter`enable_categorical` must be set to `True`.  Invalid columns:manufacturer: object, model: object, condition: object, fuel: object, transmission: object, drive: object, type: object, paint_color: object, state: object
+Registered model 'mlops_aidev_poc.mlops_silver.used_car_price_model' already exists. Creating a new version of this model...
+MlflowException: Model passed for registration did not contain any signature metadata. All models in the Unity Catalog must be logged with a model signature containing both input and output type specifications. See https://mlflow.org/docs/latest/model/signatures.html#how-to-log-models-with-signatures for details on how to log a model with a signature
