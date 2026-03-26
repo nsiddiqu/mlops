@@ -1,0 +1,267 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # 03 — Model Training
+
+# COMMAND ----------
+
+# MAGIC %pip install xgboost scikit-learn shap mlflow -q
+
+# COMMAND ----------
+
+CATALOG           = "mlops_demo"
+SILVER_TABLE      = f"{CATALOG}.silver.used_cars_features"
+EXPERIMENT_NAME   = "/Users/me@company.com/used-car-price-prediction"
+UC_MODEL_NAME     = f"{CATALOG}.silver.used_car_price_model"
+TARGET_COL        = "price"
+RANDOM_STATE      = 42
+TEST_SIZE         = 0.2
+
+# COMMAND ----------
+
+import mlflow
+import numpy as np
+import pandas as pd
+import shap
+import xgboost as xgb
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder, FunctionTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.base import clone
+import matplotlib.pyplot as plt
+from pyspark.sql import functions as F
+from pyspark.sql.types import DoubleType, IntegerType, StringType
+
+mlflow.set_registry_uri("databricks-uc")
+mlflow.set_experiment(EXPERIMENT_NAME)
+
+# COMMAND ----------
+
+# MAGIC %md ## 1. Load & cast in Spark
+
+# COMMAND ----------
+
+df_spark = spark.table(SILVER_TABLE)
+
+for c, t in [("year", IntegerType()), ("car_age", IntegerType()),
+             ("odometer", DoubleType()), ("price", DoubleType())]:
+    df_spark = df_spark.withColumn(c, F.col(c).cast(t))
+
+for c in ["manufacturer","model","condition","fuel",
+          "transmission","drive","type","paint_color","state"]:
+    df_spark = df_spark.withColumn(
+        c, F.lower(F.trim(F.coalesce(F.col(c).cast(StringType()), F.lit("unknown"))))
+    )
+
+df = df_spark.toPandas()
+print(f"Rows: {len(df):,}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 2. Pandas safety net
+
+# COMMAND ----------
+
+CATEGORICAL_COLS = ["manufacturer","model","condition","fuel",
+                    "transmission","drive","type","paint_color","state"]
+NUMERIC_COLS     = ["year","car_age","odometer"]
+
+for col in NUMERIC_COLS:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
+df[NUMERIC_COLS] = df[NUMERIC_COLS].fillna(df[NUMERIC_COLS].median())
+
+df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce")
+df = df.dropna(subset=[TARGET_COL])
+
+for col in CATEGORICAL_COLS:
+    df[col] = (df[col].astype(str).str.lower().str.strip()
+               .replace({"nan":"unknown","none":"unknown","":"unknown"}))
+
+# COMMAND ----------
+
+# MAGIC %md ## 3. Build PURE NUMPY arrays — skip ColumnTransformer entirely
+# MAGIC
+# MAGIC ColumnTransformer's internal np.concatenate can silently revert to
+# MAGIC object dtype when mixing encoder output with passthrough columns.
+# MAGIC Instead we encode categoricals manually and hstack pure float32 blocks.
+
+# COMMAND ----------
+
+X_cat_df = df[CATEGORICAL_COLS].copy()
+X_num_df = df[NUMERIC_COLS].copy()
+y        = df[TARGET_COL].values.astype(np.float32)
+
+# Fit ordinal encoder on the full dataset
+encoder = OrdinalEncoder(
+    handle_unknown="use_encoded_value",
+    unknown_value=-1,
+    dtype=np.float32
+)
+encoder.fit(X_cat_df)
+
+def make_X(cat_df, num_df):
+    """Encode cats + cast nums → single float32 ndarray, guaranteed."""
+    cats = encoder.transform(cat_df).astype(np.float32)          # (n, 9)  float32
+    nums = num_df.values.astype(np.float32)                       # (n, 3)  float32
+    out  = np.hstack([cats, nums])                                # (n, 12) float32
+    assert out.dtype == np.float32, f"dtype={out.dtype}"
+    assert not np.isnan(out).any(), "NaN in feature matrix"
+    return out
+
+X = make_X(X_cat_df, X_num_df)
+feat_names = CATEGORICAL_COLS + NUMERIC_COLS
+
+print(f"X dtype : {X.dtype}")
+print(f"X shape : {X.shape}")
+print(f"y dtype : {y.dtype}")
+print(f"Any NaN : {np.isnan(X).any()}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 4. Train/test split on numpy arrays
+
+# COMMAND ----------
+
+from sklearn.model_selection import train_test_split
+
+idx = np.arange(len(X))
+idx_train, idx_test = train_test_split(idx, test_size=TEST_SIZE, random_state=RANDOM_STATE)
+
+X_train, X_test = X[idx_train], X[idx_test]
+y_train, y_test = y[idx_train], y[idx_test]
+
+# Keep raw DataFrames for inference later (FastAPI / model signature)
+X_train_df = df[CATEGORICAL_COLS + NUMERIC_COLS].iloc[idx_train].reset_index(drop=True)
+X_test_df  = df[CATEGORICAL_COLS + NUMERIC_COLS].iloc[idx_test].reset_index(drop=True)
+
+print(f"Train: {X_train.shape}  Test: {X_test.shape}")
+print(f"X_train dtype: {X_train.dtype}  X_test dtype: {X_test.dtype}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 5. Train XGBoost + MLflow
+
+# COMMAND ----------
+
+PARAMS = {
+    "n_estimators":500, "max_depth":7, "learning_rate":0.05,
+    "subsample":0.8, "colsample_bytree":0.8, "min_child_weight":5,
+    "gamma":0.1, "reg_alpha":0.1, "reg_lambda":1.0,
+    "tree_method":"hist", "random_state":RANDOM_STATE, "n_jobs":-1,
+}
+
+with mlflow.start_run(run_name="xgboost-baseline") as run:
+    RUN_ID = run.info.run_id
+    print(f"Run ID: {RUN_ID}")
+
+    mlflow.log_params({**PARAMS,
+        "train_size":len(X_train), "test_size":len(X_test),
+        "categorical_cols":str(CATEGORICAL_COLS),
+        "numeric_cols":str(NUMERIC_COLS), "target_col":TARGET_COL})
+
+    reg = xgb.XGBRegressor(**PARAMS)
+    reg.fit(
+        X_train, y_train,
+        eval_set=[(X_test, y_test)],
+        verbose=50
+    )
+
+    y_pred = reg.predict(X_test)
+    mae    = mean_absolute_error(y_test, y_pred)
+    rmse   = np.sqrt(mean_squared_error(y_test, y_pred))
+    r2     = r2_score(y_test, y_pred)
+    mape   = np.mean(np.abs((y_test - y_pred) / np.maximum(y_test, 1))) * 100
+
+    mlflow.log_metrics({"mae":round(mae,2),"rmse":round(rmse,2),
+                        "r2":round(r2,4),"mape":round(mape,2)})
+    print(f"MAE=${mae:,.0f}  RMSE=${rmse:,.0f}  R²={r2:.4f}  MAPE={mape:.1f}%")
+
+    # ── Feature importance plot ──────────────────────────────────────────
+    importances = reg.feature_importances_
+    fi_df = (pd.DataFrame({"feature":feat_names,"importance":importances})
+               .sort_values("importance", ascending=True).tail(20))
+    fig, ax = plt.subplots(figsize=(10,8))
+    ax.barh(fi_df["feature"], fi_df["importance"], color="#4F8EF7")
+    ax.set_title("Feature Importances (XGBoost)")
+    plt.tight_layout()
+    mlflow.log_figure(fig, "feature_importance.png")
+    plt.close()
+
+    # ── SHAP ──────────────────────────────────────────────────────────────
+    # X_test is ALREADY a float32 ndarray — no transform, no pipeline,
+    # no ColumnTransformer. TreeExplainer gets pure float32 directly.
+    n_shap     = min(2000, len(X_test))
+    rng        = np.random.default_rng(42)
+    shap_idx   = rng.choice(len(X_test), size=n_shap, replace=False)
+    X_shap     = X_test[shap_idx]                   # already float32 ndarray
+
+    print(f"SHAP input: dtype={X_shap.dtype}  shape={X_shap.shape}  NaN={np.isnan(X_shap).any()}")
+    assert X_shap.dtype == np.float32
+
+    explainer   = shap.TreeExplainer(reg)
+    shap_values = explainer.shap_values(X_shap)
+
+    fig2, _ = plt.subplots(figsize=(10,8))
+    shap.summary_plot(shap_values, X_shap, feature_names=feat_names, show=False)
+    mlflow.log_figure(plt.gcf(), "shap_summary.png")
+    plt.close()
+
+    # ── Wrap reg in a sklearn Pipeline for MLflow model logging ──────────
+    # The Pipeline preprocesses raw DataFrames at inference time
+    def make_pipeline_for_logging():
+        """Thin sklearn pipeline: DataFrame → encode → predict."""
+        def preprocess(df_in):
+            return make_X(df_in[CATEGORICAL_COLS], df_in[NUMERIC_COLS])
+
+        from sklearn.base import BaseEstimator, RegressorMixin
+        class WrappedModel(BaseEstimator, RegressorMixin):
+            def __init__(self, booster, enc):
+                self.booster = booster
+                self.enc     = enc
+            def fit(self, X, y=None): return self
+            def predict(self, df_in):
+                cats = self.enc.transform(df_in[CATEGORICAL_COLS]).astype(np.float32)
+                nums = df_in[NUMERIC_COLS].values.astype(np.float32)
+                arr  = np.hstack([cats, nums])
+                return self.booster.predict(arr)
+
+        return WrappedModel(booster=reg, enc=encoder)
+
+    wrapped = make_pipeline_for_logging()
+
+    input_example = X_train_df.head(5)
+    signature     = mlflow.models.infer_signature(
+        input_example,
+        wrapped.predict(input_example)
+    )
+    mlflow.sklearn.log_model(
+        sk_model=wrapped, artifact_path="model",
+        signature=signature, input_example=input_example,
+        registered_model_name=UC_MODEL_NAME,
+    )
+    print(f"\n✅ Registered: {UC_MODEL_NAME}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 6. Residual Analysis
+
+# COMMAND ----------
+
+residuals = y_test - y_pred
+fig, axes = plt.subplots(1, 2, figsize=(14,5))
+axes[0].scatter(y_pred, residuals, alpha=0.3, s=5, color="#4F8EF7")
+axes[0].axhline(0, color="red", linewidth=1)
+axes[0].set(xlabel="Predicted Price ($)", ylabel="Residual ($)", title="Residuals vs Predicted")
+axes[1].scatter(y_test, y_pred, alpha=0.3, s=5, color="#4F8EF7")
+lims = [max(0, min(y_test.min(), y_pred.min())), max(y_test.max(), y_pred.max())]
+axes[1].plot(lims, lims, "r-", linewidth=1)
+axes[1].set(xlabel="Actual Price ($)", ylabel="Predicted Price ($)", title="Actual vs Predicted")
+plt.tight_layout()
+display(fig)
+
+# COMMAND ----------
+
+dbutils.jobs.taskValues.set(key="run_id",    value=RUN_ID)
+dbutils.jobs.taskValues.set(key="model_name", value=UC_MODEL_NAME)
+print(f"\n✅ Training complete. Run ID: {RUN_ID}")
