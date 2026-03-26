@@ -1,0 +1,15 @@
+Run ID: f5f547ba2fe54155984fae1063c8eea0
+[0]	validation_0-rmse:14238.88395
+[50]	validation_0-rmse:7727.19007
+[100]	validation_0-rmse:6900.36891
+[150]	validation_0-rmse:6501.31065
+[200]	validation_0-rmse:6277.55823
+[250]	validation_0-rmse:6104.28621
+[300]	validation_0-rmse:5989.57468
+[350]	validation_0-rmse:5866.06517
+[400]	validation_0-rmse:5771.01405
+[450]	validation_0-rmse:5702.12736
+[499]	validation_0-rmse:5625.39532
+MAE=$3,165  RMSE=$5,625  R²=0.8537  MAPE=54.5%
+SHAP input: dtype=float32  shape=(2000, 12)  NaN=False
+ValueError: could not convert string to float: '[1.9227133E4]'
