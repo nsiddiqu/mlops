@@ -1,0 +1,70 @@
+
+Last execution failed
+14
+14
+123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103
+(1) MLflow run
+Logged 1 run to an experiment in MLflow. Learn more
+Run ID: 8dbb8116b1e84ae5af1616658f390fe3
+[0]	validation-rmse:14238.88395
+[50]	validation-rmse:7727.19007
+[100]	validation-rmse:6900.36891
+[150]	validation-rmse:6501.31065
+[200]	validation-rmse:6277.55823
+[250]	validation-rmse:6104.28621
+[300]	validation-rmse:5989.57468
+[350]	validation-rmse:5866.06517
+[400]	validation-rmse:5771.01405
+[450]	validation-rmse:5702.12736
+[499]	validation-rmse:5625.39532
+
+MAE=$3,165  RMSE=$5,625  R²=0.8537  MAPE=54.5%
+2026/03/26 05:19:24 WARNING mlflow.models.model: `artifact_path` is deprecated. Please use `name` instead.
+🔗 View Logged Model at: https://adb-7405618848852627.7.azuredatabricks.net/ml/experiments/1073856514444964/models/m-e42c24c7b8834174972a1456bc4d5e7d?o=7405618848852627
+2026/03/26 05:19:29 WARNING mlflow.utils.requirements_utils: Failed to run predict on input_example, dependencies introduced in predict are not captured.
+XGBoostError('[05:19:28] /__w/xgboost/xgboost/src/c_api/../data/array_interface.h:501: Unicode-8 is not supported.\nStack trace:\n  [bt] (0) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(+0x2c1a8c) [0x7f20ce0c1a8c]\n  [bt] (1) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(+0x2df8d6) [0x7f20ce0df8d6]\n  [bt] (2) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(XGDMatrixCreateFromDense+0x161) [0x7f20cdfd9f61]\n  [bt] (3) /lib/x86_64-linux-gnu/libffi.so.8(+0x7e2e) [0x7f20fec75e2e]\n  [bt] (4) /lib/x86_64-linux-gnu/libffi.so.8(+0x4493) [0x7f20fec72493]\n  [bt] (5) /usr/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0xa5d7) [0x7f20fec8e5d7]\n  [bt] (6) /usr/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0x9a00) [0x7f20fec8da00]\n  [bt] (7) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/bin/python(_PyObject_MakeTpCall+0x25b) [0x557b84ca90bb]\n  [bt] (8) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/bin/python(_PyEval_EvalFrameDefault+0x60ae) [0x557b84ca2dfe]\n\n')Traceback (most recent call last):
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/mlflow/utils/_capture_modules.py", line 170, in load_model_and_predict
+    model.predict(input_example, params=params)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/mlflow/xgboost/__init__.py", line 411, in predict
+    return predict_fn(dataframe, **params)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/mlflow/xgboost/__init__.py", line 445, in wrapped_predict_fn
+    xgb.DMatrix(data), *args, validate_features=validate_features, **filtered_kwargs
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/core.py", line 751, in inner_f
+    return func(**kwargs)
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/core.py", line 976, in __init__
+    handle, feature_names, feature_types = dispatch_data_backend(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/data.py", line 1367, in dispatch_data_backend
+    return _from_numpy_array(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/data.py", line 288, in _from_numpy_array
+    _check_call(
+  File "/local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/core.py", line 324, in _check_call
+    raise XGBoostError(py_str(_LIB.XGBGetLastError()))
+xgboost.core.XGBoostError: [05:19:28] /__w/xgboost/xgboost/src/c_api/../data/array_interface.h:501: Unicode-8 is not supported.
+Stack trace:
+  [bt] (0) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(+0x2c1a8c) [0x7f20ce0c1a8c]
+  [bt] (1) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(+0x2df8d6) [0x7f20ce0df8d6]
+  [bt] (2) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/lib/python3.10/site-packages/xgboost/lib/libxgboost.so(XGDMatrixCreateFromDense+0x161) [0x7f20cdfd9f61]
+  [bt] (3) /lib/x86_64-linux-gnu/libffi.so.8(+0x7e2e) [0x7f20fec75e2e]
+  [bt] (4) /lib/x86_64-linux-gnu/libffi.so.8(+0x4493) [0x7f20fec72493]
+  [bt] (5) /usr/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0xa5d7) [0x7f20fec8e5d7]
+  [bt] (6) /usr/lib/python3.10/lib-dynload/_ctypes.cpython-310-x86_64-linux-gnu.so(+0x9a00) [0x7f20fec8da00]
+  [bt] (7) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/bin/python(_PyObject_MakeTpCall+0x25b) [0x557b84ca90bb]
+  [bt] (8) /local_disk0/.ephemeral_nfs/envs/pythonEnv-f23486f4-c276-4aa4-b221-ed85fb18178d/bin/python(_PyEval_EvalFrameDefault+0x60ae) [0x557b84ca2dfe]
+2026/03/26 05:19:30 WARNING mlflow.models.model: Failed to validate serving input example {
+  "inputs": [
+    [
+      7.0,
+      19875.0,
+  .... Alternatively, you can avoid passing input example and pass model signature instead when logging the model. To ensure the input example is valid prior to serving, please try calling `mlflow.models.validate_serving_input` on the model uri and serving input example. A serving input example can be generated from model input example using `mlflow.models.convert_input_example_to_serving_input` function.
+Got error: Failed to enforce schema of data '[['7.0' '19875.0' '2.0' '2.0' '0.0' '0.0' '7.0' '5.0' '23.0' '2014.0'
+  '12.0' '99745.0']
+ ['13.0' '11078.0' '6.0' '2.0' '0.0' '1.0' '8.0' '1.0' '13.0' '2012.0'
+  '14.0' '136610.0']
+ ['31.0' '18219.0' '0.0' '2.0' '0.0' '0.0' '9.0' '9.0' '19.0' '2008.0'
+  '18.0' '143000.0']
+ ['39.0' '12823.0' '2.0' '2.0' '0.0' '3.0' '9.0' '9.0' '31.0' '2004.0'
+  '22.0' '199000.0']
+ ['34.0' '1448.0' '6.0' '0.0' '0.0' '0.0' '7.0' '11.0' '38.0' '2000.0'
+  '26.0' '36656.0']]' with schema '['manufacturer': string (required), 'model': string (required), 'condition': string (required), 'fuel': string (required), 'transmission': string (required), 'drive': string (required), 'type': string (required), 'paint_color': string (required), 'state': string (required), 'year': long (required), 'car_age': long (required), 'odometer': double (required)]'. Error: Model is missing inputs ['manufacturer', 'model', 'condition', 'fuel', 'transmission', 'drive', 'type', 'paint_color', 'state', 'year', 'car_age', 'odometer']. Note that there were extra inputs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].
+Registered model 'mlops_aidev_poc.mlops_silver.used_car_price_model' already exists. Creating a new version of this model...
+MlflowException: Unable to import necessary dependencies to access model version files in Unity Catalog. Please ensure you have the necessary dependencies installed, e.g. by running 'pip install mlflow[databricks]' or 'pip install mlflow-skinny[databricks]'
