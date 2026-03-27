@@ -1,0 +1,151 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # 05 — Model Serving
+# MAGIC
+# MAGIC **Goal**: Deploy the Champion model to a **Databricks Model Serving** endpoint.
+
+# COMMAND ----------
+
+# MAGIC %pip install databricks-sdk -q
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.serving import (
+    ServedEntityInput,
+    EndpointCoreConfigInput,
+)
+import time, json
+
+CATALOG       = "mlops_aidev_poc"
+SCHEMA        = "mlops_silver"
+UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.used_car_price_model"
+ENDPOINT_NAME = "used-car-price-prediction"
+
+try:
+    CHAMPION_VERSION = dbutils.jobs.taskValues.get(
+        taskKey="model_evaluation", key="champion_version", debugValue="1"
+    )
+except:
+    CHAMPION_VERSION = "1"
+
+w = WorkspaceClient()
+print(f"Deploying : {UC_MODEL_NAME} v{CHAMPION_VERSION}")
+print(f"Endpoint  : {ENDPOINT_NAME}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 1. Check if endpoint exists
+
+# COMMAND ----------
+
+existing_endpoints = {e.name for e in w.serving_endpoints.list()}
+endpoint_exists    = ENDPOINT_NAME in existing_endpoints
+print(f"Endpoint exists: {endpoint_exists}")
+
+# COMMAND ----------
+
+# MAGIC %md ## 2. Create or Update Endpoint
+# MAGIC
+# MAGIC Note: `auto_capture_config` (legacy inference tables) is removed —
+# MAGIC it was deprecated and now raises an error. Use AI Gateway inference
+# MAGIC tables from the Databricks UI if logging is needed.
+
+# COMMAND ----------
+
+served_entity = ServedEntityInput(
+    entity_name           = UC_MODEL_NAME,
+    entity_version        = str(CHAMPION_VERSION),
+    workload_size         = "Small",
+    scale_to_zero_enabled = True,
+    name                  = "current",
+)
+
+config = EndpointCoreConfigInput(
+    served_entities = [served_entity],
+    # auto_capture_config removed — legacy inference tables are deprecated.
+    # Enable AI Gateway inference tables from Databricks UI after deployment.
+)
+
+if endpoint_exists:
+    print("Updating existing endpoint...")
+    w.serving_endpoints.update_config(name=ENDPOINT_NAME, config=config)
+else:
+    print("Creating new endpoint...")
+    w.serving_endpoints.create(name=ENDPOINT_NAME, config=config)
+
+# COMMAND ----------
+
+# MAGIC %md ## 3. Wait for endpoint to be ready
+
+# COMMAND ----------
+
+print("Waiting for endpoint to be ready...")
+max_wait_seconds = 600
+elapsed          = 0
+poll_interval    = 15
+
+while elapsed < max_wait_seconds:
+    endpoint     = w.serving_endpoints.get(ENDPOINT_NAME)
+    state        = endpoint.state.ready if endpoint.state else None
+    config_state = endpoint.state.config_update if endpoint.state else None
+
+    print(f"  [{elapsed:>3}s] State: {state} | Config: {config_state}")
+
+    if str(state) == "EndpointStateReady.READY":
+        print(f"\n✅ Endpoint '{ENDPOINT_NAME}' is READY!")
+        break
+
+    time.sleep(poll_interval)
+    elapsed += poll_interval
+else:
+    print(f"\n⚠️  Timed out after {max_wait_seconds}s — check the Databricks Serving UI.")
+
+# COMMAND ----------
+
+# MAGIC %md ## 4. Test the Endpoint
+
+# COMMAND ----------
+
+# The serving endpoint receives encoded float features (same as training).
+# We send a pre-encoded row as a split-format array for a quick smoke test.
+test_payload = {
+    "dataframe_split": {
+        "columns": ["manufacturer","model","condition","fuel","transmission",
+                    "drive","type","paint_color","state","year","car_age","odometer"],
+        "data": [
+            ["honda","civic","good","gas","automatic","fwd","sedan","blue","ca",2019,5,45000]
+        ]
+    }
+}
+
+response = w.serving_endpoints.query(
+    name             = ENDPOINT_NAME,
+    dataframe_split  = test_payload["dataframe_split"],
+)
+
+print("✅ Test inference result:")
+print(json.dumps({"predictions": response.predictions}, indent=2))
+
+# COMMAND ----------
+
+# MAGIC %md ## 5. Print Endpoint URL for FastAPI
+
+# COMMAND ----------
+
+workspace_url = spark.conf.get("spark.databricks.workspaceUrl")
+endpoint_url  = f"https://{workspace_url}/serving-endpoints/{ENDPOINT_NAME}/invocations"
+
+print("\n" + "="*60)
+print("📋  Copy these to your fastapi/.env file:")
+print("="*60)
+print(f"DATABRICKS_HOST={workspace_url}")
+print(f"DATABRICKS_SERVING_ENDPOINT={endpoint_url}")
+print("="*60)
+
+dbutils.jobs.taskValues.set(key="endpoint_url", value=endpoint_url)
+print(f"\n✅ Done. Next → start FastAPI service.")
